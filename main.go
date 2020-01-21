@@ -230,6 +230,7 @@ func usage() {
 }
 
 func main() {
+	// Flags ininitializing.
 	flag.Usage = usage
 
 	verbose := flag.Bool("verbose", false, "shows debug info in stderr")
@@ -242,6 +243,7 @@ func main() {
 			"/usr/local/share/cleanid3/forbidden.txt",
 			"forbidden words list path")
 
+	// Arguments parsing.
 	flag.Parse()
 
 	if *verbose {
@@ -276,6 +278,7 @@ func main() {
 		files = flag.Args()
 	}
 
+	// Forbidden words list initializing.
 	forbiddenWords, err := readLines(*forbiddenWordsPath)
 	if err != nil {
 		glog.Fatal("Error initializing blacklist: ", err)
@@ -284,6 +287,7 @@ func main() {
 		glog.Infof("forbidden: \"%s\"", word)
 	}
 
+	// Our actual job, cleaning ID3 tags of all the given `files`.
 	for _, file := range files {
 		if err := process(forbiddenWords, file, *dryRun); err != nil {
 			glog.Fatal(err)
