@@ -43,8 +43,20 @@ func process(words []string, file string, dryRun bool) error {
 	}
 	defer tag.Close()
 
-	// Check ID3 tags for noisy dirt.
 	isFileDirty := false
+
+	// Going through all tag frames, checking text based frames for dirt.
+	// URL based frames get killed alltogether, no matter what.
+	//
+	// Most text based frames identify themselves starting with `T`,
+	// like eg. `TALB` or `TIT2` and are uniform in their data structure.
+	// `TXXX` is an extension and needs extra handling. The `COMM`
+	// comment frame is also demanding slightly different parsing
+	// and patching. The `USLT` lyrics frame being yet another extra
+	// for our purposes.
+	//
+	// TODO(tillt): Find a way to split this into functions or even
+	// templates or alike.
 
 	for k, s := range tag.AllFrames() {
 		// Any text frame "T***".
@@ -66,10 +78,10 @@ func process(words []string, file string, dryRun bool) error {
 							fmt.Printf("Updating %s: %s\n", k, value)
 							tag.AddTextFrame(k, tf.Encoding, value)
 						} else {
-							fmt.Printf("Removing tag %s\n", k)
+							fmt.Printf("Removing frame %s\n", k)
 							tag.DeleteFrames(k)
 						}
-						isFileDirty = isFileDirty || cleaned
+						isFileDirty = true
 					}
 				} else {
 					// "TXXX".
@@ -88,10 +100,10 @@ func process(words []string, file string, dryRun bool) error {
 							}
 							tag.AddUserDefinedTextFrame(udtf)
 						} else {
-							fmt.Printf("Removing tag %s\n", k)
+							fmt.Printf("Removing frame %s\n", k)
 							tag.DeleteFrames(k)
 						}
-						isFileDirty = isFileDirty || cleaned
+						isFileDirty = true
 					}
 				}
 			}
@@ -123,14 +135,54 @@ func process(words []string, file string, dryRun bool) error {
 						}
 						tag.AddCommentFrame(newcf)
 					} else {
-						fmt.Printf("Removing tag %s\n", k)
+						fmt.Printf("Removing frame %s\n", k)
 						tag.DeleteFrames(k)
 					}
-					isFileDirty = isFileDirty || cleaned
+					isFileDirty = true
 				}
 			}
+		} else if k == "USLT" {
+			// "USLT".
+			for i := 0; i < len(s); i++ {
+				uslf, _ := s[i].(id3v2.UnsynchronisedLyricsFrame)
+
+				message := fmt.Sprintf("%s: ", k)
+				if len(uslf.ContentDescriptor) > 0 {
+					message += fmt.Sprintf("%s: ", uslf.ContentDescriptor)
+				}
+				if len(uslf.Language) > 0 {
+					message += fmt.Sprintf("%s: ", uslf.Language)
+				}
+				message += uslf.Lyrics
+				glog.Info(message)
+
+				cleaned, value := cleanedString(words, uslf.Lyrics)
+
+				if cleaned {
+					if len(value) > 0 {
+						fmt.Printf("Updating %s: %s\n", k, value)
+						newuslf := id3v2.UnsynchronisedLyricsFrame{
+							Encoding:          uslf.Encoding,
+							Language:          uslf.Language,
+							ContentDescriptor: uslf.ContentDescriptor,
+							Lyrics:            value,
+						}
+						tag.AddUnsynchronisedLyricsFrame(newuslf)
+					} else {
+						fmt.Printf("Removing frame %s\n", k)
+						tag.DeleteFrames(k)
+					}
+					isFileDirty = true
+				}
+			}
+		} else if k[0] == 'W' {
+			// Any URL frame "W***".
+			glog.Infof("%s: ????", k)
+			fmt.Printf("Removing frame %s\n", k)
+			tag.DeleteFrames(k)
+			isFileDirty = true
 		} else {
-			// Any other id.
+			// Any other frame id.
 			glog.Infof("%s: ????", k)
 		}
 	}
