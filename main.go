@@ -61,14 +61,10 @@ func process(words []string, file string, dryRun bool) error {
 	for k, s := range tag.AllFrames() {
 		// Any text frame "T***".
 		if k[0] == 'T' {
-			// FIXME(tillt): Why can't I simply do
-			//   for f := range s
-			// It appears that the above causes the element type
-			// `id3v2.Framer` to get casted to `int`.
-			for i := 0; i < len(s); i++ {
+			for _, f := range s {
 				if k != "TXXX" {
 					// Any text frame that is not "TXXX".
-					tf, _ := s[i].(id3v2.TextFrame)
+					tf, _ := f.(id3v2.TextFrame)
 					glog.Infof("%s: %s", k, tf.Text)
 
 					cleaned, value := cleanedString(words, tf.Text)
@@ -85,7 +81,7 @@ func process(words []string, file string, dryRun bool) error {
 					}
 				} else {
 					// "TXXX".
-					tf, _ := s[i].(id3v2.UserDefinedTextFrame)
+					tf, _ := f.(id3v2.UserDefinedTextFrame)
 					glog.Infof("%s: %s: %s", k, tf.Description, tf.Value)
 
 					cleaned, value := cleanedString(words, tf.Value)
@@ -109,8 +105,8 @@ func process(words []string, file string, dryRun bool) error {
 			}
 		} else if k == "COMM" {
 			// "COMM".
-			for i := 0; i < len(s); i++ {
-				cf, _ := s[i].(id3v2.CommentFrame)
+			for _, f := range s {
+				cf, _ := f.(id3v2.CommentFrame)
 
 				message := fmt.Sprintf("%s: ", k)
 				if len(cf.Description) > 0 {
@@ -143,8 +139,8 @@ func process(words []string, file string, dryRun bool) error {
 			}
 		} else if k == "USLT" {
 			// "USLT".
-			for i := 0; i < len(s); i++ {
-				uslf, _ := s[i].(id3v2.UnsynchronisedLyricsFrame)
+			for _, f := range s {
+				uslf, _ := f.(id3v2.UnsynchronisedLyricsFrame)
 
 				message := fmt.Sprintf("%s: ", k)
 				if len(uslf.ContentDescriptor) > 0 {
