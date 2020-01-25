@@ -1,6 +1,6 @@
 # CleanID3
 
-Parses ID3V2 tags from the supplied file, removes occurrences of forbidden words from text frames, updates the file if needed.
+Parses ID3V2 tags from the supplied file, removes occurrences of forbidden words from text frames, removes URL frames, updates the file if needed.
 
 ## Background
 
@@ -23,7 +23,7 @@ http://
 
 These defaults cause CleanID3 to modify every tag that contains a URL, removing it. CleanID3 will assume that anything following the forbidden word is also unwanted and cleans it. Text left of the forbidden word is left untouched.
 
-For removing a bunch of known noisy vandals;
+For removing a bunch of known tags;
 ```
 Tagged by:
 This tag done with
