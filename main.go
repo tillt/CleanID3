@@ -11,6 +11,138 @@ import (
 	"github.com/golang/glog"
 )
 
+// Frame interface unifiying the basic functions we need accross frame
+// types.
+type Frame interface {
+	// Log tag name and all important details for this frame.
+	Log(string)
+	// Update the tag with new frame information.
+	UpdateTag(*id3v2.Tag, string, string)
+	// Get displayed text we may need to clean.
+	FrameText() string
+}
+
+//
+// TextFrame.
+//
+
+// TextFrame pulls in the id3v2-package type to make it extendable.
+type TextFrame id3v2.TextFrame
+
+// Log for TextFrame.
+func (tf TextFrame) Log(k string) {
+	glog.Infof("%s: %s (encoding: %d)", k, tf.Text, tf.Encoding.Key)
+}
+
+// UpdateTag for TextFrame.
+func (tf TextFrame) UpdateTag(tag *id3v2.Tag, k string, value string) {
+	tag.AddTextFrame(k, tf.Encoding, value)
+}
+
+// FrameText for TextFrame.
+func (tf TextFrame) FrameText() string {
+	return tf.Text
+}
+
+//
+// UserDefinedTextFrame.
+//
+
+// UserDefinedTextFrame pulls in the id3v2-package type to make it extendable.
+type UserDefinedTextFrame id3v2.UserDefinedTextFrame
+
+// Log for UserDefinedTextFrame.
+func (tf UserDefinedTextFrame) Log(k string) {
+	glog.Infof("%s: %s: %s (encoding: %d)", k, tf.Description, tf.Value, tf.Encoding.Key)
+}
+
+// UpdateTag for UserDefinedTextFrame.
+func (tf UserDefinedTextFrame) UpdateTag(tag *id3v2.Tag, k string, value string) {
+	udtf := id3v2.UserDefinedTextFrame{
+		Encoding:    tf.Encoding,
+		Description: tf.Description,
+		Value:       value,
+	}
+	tag.AddUserDefinedTextFrame(udtf)
+}
+
+// FrameText for UserDefinedTextFrame.
+func (tf UserDefinedTextFrame) FrameText() string {
+	return tf.Value
+}
+
+//
+// CommentFrame.
+//
+
+// CommentFrame pulls in the id3v2-package type to make it extendable.
+type CommentFrame id3v2.CommentFrame
+
+// Log for CommentFrame.
+func (cf CommentFrame) Log(k string) {
+	message := fmt.Sprintf("%s: ", k)
+	if len(cf.Description) > 0 {
+		message += fmt.Sprintf("%s: ", cf.Description)
+	}
+	if len(cf.Language) > 0 {
+		message += fmt.Sprintf("%s: ", cf.Language)
+	}
+	message += cf.Text
+	glog.Info(message)
+}
+
+// UpdateTag for CommentFrame.
+func (cf CommentFrame) UpdateTag(tag *id3v2.Tag, k string, value string) {
+	newcf := id3v2.CommentFrame{
+		Encoding:    cf.Encoding,
+		Language:    cf.Language,
+		Description: cf.Description,
+		Text:        value,
+	}
+	tag.AddCommentFrame(newcf)
+}
+
+// FrameText for CommentFrame.
+func (cf CommentFrame) FrameText() string {
+	return cf.Text
+}
+
+//
+// UnsynchronisedLyricsFrame.
+//
+
+// UnsynchronisedLyricsFrame pulls in the id3v2-package type to make it extendable.
+type UnsynchronisedLyricsFrame id3v2.UnsynchronisedLyricsFrame
+
+// Log for UnsynchronisedLyricsFrame.
+func (uslf UnsynchronisedLyricsFrame) Log(k string) {
+	message := fmt.Sprintf("%s: ", k)
+	if len(uslf.ContentDescriptor) > 0 {
+		message += fmt.Sprintf("%s: ", uslf.ContentDescriptor)
+	}
+	if len(uslf.Language) > 0 {
+		message += fmt.Sprintf("%s: ", uslf.Language)
+	}
+	message += uslf.Lyrics
+	glog.Info(message)
+}
+
+// UpdateTag for UnsynchronisedLyricsFrame.
+func (uslf UnsynchronisedLyricsFrame) UpdateTag(tag *id3v2.Tag, k string, value string) {
+	newuslf := id3v2.UnsynchronisedLyricsFrame{
+		Encoding:          uslf.Encoding,
+		Language:          uslf.Language,
+		ContentDescriptor: uslf.ContentDescriptor,
+		Lyrics:            value,
+	}
+	tag.AddUnsynchronisedLyricsFrame(newuslf)
+}
+
+// FrameText for UnsynchronisedLyricsFrame.
+func (uslf UnsynchronisedLyricsFrame) FrameText() string {
+	return uslf.Lyrics
+}
+
 // Clean input string.
 //
 // Removes additions if tainted by useless information.
@@ -32,7 +164,7 @@ func cleanedString(forbiddenWords []string, value string) (bool, string) {
 // Process file.
 //
 // Parses the ID3 tags from the given file, removes occurances of
-// forbidden words in any text frame, updates the file if needed.
+// forbidden words in any text frame, update the file if needed.
 func process(words []string, file string, dryRun bool) error {
 	glog.Infof("Processing %s\n", file)
 
@@ -45,125 +177,38 @@ func process(words []string, file string, dryRun bool) error {
 
 	isFileDirty := false
 
-	// Going through all tag frames, checking text based frames for dirt.
-	// URL based frames get killed alltogether, no matter what.
-	//
-	// Most text based frames identify themselves starting with `T`,
-	// like eg. `TALB` or `TIT2` and are uniform in their data structure.
-	// `TXXX` is an extension and needs extra handling. The `COMM`
-	// comment frame is also demanding slightly different parsing
-	// and patching. The `USLT` lyrics frame being yet another extra
-	// for our purposes.
-	//
-	// TODO(tillt): Find a way to split this into functions or even
-	// templates or alike.
-
 	for k, s := range tag.AllFrames() {
-		// Any text frame "T***".
-		if k[0] == 'T' {
+		// Any cleanable frame.
+		if k[0] == 'T' || k == "COMM" || k == "USLT" {
 			for _, f := range s {
-				if k != "TXXX" {
-					// Any text frame that is not "TXXX".
-					tf, _ := f.(id3v2.TextFrame)
-					glog.Infof("%s: %s", k, tf.Text)
+				var frame Frame
 
-					cleaned, value := cleanedString(words, tf.Text)
-
-					if cleaned {
-						if len(value) > 0 {
-							fmt.Printf("Updating %s: %s\n", k, value)
-							tag.AddTextFrame(k, tf.Encoding, value)
-						} else {
-							fmt.Printf("Removing frame %s\n", k)
-							tag.DeleteFrames(k)
-						}
-						isFileDirty = true
-					}
-				} else {
+				if k == "COMM" {
+					// "COMM".
+					cf, _ := f.(id3v2.CommentFrame)
+					frame = CommentFrame(cf)
+				} else if k == "USLT" {
+					// "USLT".
+					uslf, _ := f.(id3v2.UnsynchronisedLyricsFrame)
+					frame = UnsynchronisedLyricsFrame(uslf)
+				} else if k == "TXXX" {
 					// "TXXX".
 					tf, _ := f.(id3v2.UserDefinedTextFrame)
-					glog.Infof("%s: %s: %s", k, tf.Description, tf.Value)
-
-					cleaned, value := cleanedString(words, tf.Value)
-
-					if cleaned {
-						if len(value) > 0 {
-							fmt.Printf("Updating %s: %s\n", k, value)
-							udtf := id3v2.UserDefinedTextFrame{
-								Encoding:    tf.Encoding,
-								Description: tf.Description,
-								Value:       value,
-							}
-							tag.AddUserDefinedTextFrame(udtf)
-						} else {
-							fmt.Printf("Removing frame %s\n", k)
-							tag.DeleteFrames(k)
-						}
-						isFileDirty = true
-					}
+					frame = UserDefinedTextFrame(tf)
+				} else {
+					// Any text frame that is not "TXXX".
+					tf, _ := f.(id3v2.TextFrame)
+					frame = TextFrame(tf)
 				}
-			}
-		} else if k == "COMM" {
-			// "COMM".
-			for _, f := range s {
-				cf, _ := f.(id3v2.CommentFrame)
 
-				message := fmt.Sprintf("%s: ", k)
-				if len(cf.Description) > 0 {
-					message += fmt.Sprintf("%s: ", cf.Description)
-				}
-				if len(cf.Language) > 0 {
-					message += fmt.Sprintf("%s: ", cf.Language)
-				}
-				message += cf.Text
-				glog.Info(message)
+				frame.Log(k)
 
-				cleaned, value := cleanedString(words, cf.Text)
+				cleaned, value := cleanedString(words, frame.FrameText())
 
 				if cleaned {
 					if len(value) > 0 {
 						fmt.Printf("Updating %s: %s\n", k, value)
-						newcf := id3v2.CommentFrame{
-							Encoding:    cf.Encoding,
-							Language:    cf.Language,
-							Description: cf.Description,
-							Text:        value,
-						}
-						tag.AddCommentFrame(newcf)
-					} else {
-						fmt.Printf("Removing frame %s\n", k)
-						tag.DeleteFrames(k)
-					}
-					isFileDirty = true
-				}
-			}
-		} else if k == "USLT" {
-			// "USLT".
-			for _, f := range s {
-				uslf, _ := f.(id3v2.UnsynchronisedLyricsFrame)
-
-				message := fmt.Sprintf("%s: ", k)
-				if len(uslf.ContentDescriptor) > 0 {
-					message += fmt.Sprintf("%s: ", uslf.ContentDescriptor)
-				}
-				if len(uslf.Language) > 0 {
-					message += fmt.Sprintf("%s: ", uslf.Language)
-				}
-				message += uslf.Lyrics
-				glog.Info(message)
-
-				cleaned, value := cleanedString(words, uslf.Lyrics)
-
-				if cleaned {
-					if len(value) > 0 {
-						fmt.Printf("Updating %s: %s\n", k, value)
-						newuslf := id3v2.UnsynchronisedLyricsFrame{
-							Encoding:          uslf.Encoding,
-							Language:          uslf.Language,
-							ContentDescriptor: uslf.ContentDescriptor,
-							Lyrics:            value,
-						}
-						tag.AddUnsynchronisedLyricsFrame(newuslf)
+						frame.UpdateTag(tag, k, value)
 					} else {
 						fmt.Printf("Removing frame %s\n", k)
 						tag.DeleteFrames(k)
@@ -229,9 +274,17 @@ func main() {
 	// Flags ininitializing.
 	flag.Usage = usage
 
-	verbose := flag.Bool("verbose", false, "shows debug info in stderr")
+	verbose :=
+		flag.Bool(
+			"verbose",
+			false,
+			"shows debug info in stderr")
 
-	dryRun := flag.Bool("dry", false, "do not write to file")
+	dryRun :=
+		flag.Bool(
+			"dry",
+			false,
+			"do not write to file")
 
 	forbiddenWordsPath :=
 		flag.String(
@@ -254,6 +307,7 @@ func main() {
 
 	var files []string
 
+	// We are expecting input from stdin if there are no parameters.
 	if len(flag.Args()) < 1 {
 		scanner := bufio.NewScanner(os.Stdin)
 
