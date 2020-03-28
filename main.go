@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/bogem/id3v2"
 	"github.com/golang/glog"
@@ -29,9 +30,11 @@ type Frame interface {
 // TextFrame pulls in the id3v2-package type to make it extendable.
 type TextFrame id3v2.TextFrame
 
+// FF FE 44 00 49 00 53 00 43 00 49 00 44 00 00 00
+
 // Log for TextFrame.
 func (tf TextFrame) Log(k string) {
-	glog.Infof("%s: %s (encoding: %d)", k, tf.Text, tf.Encoding.Key)
+	glog.Infof("%s: %s (%s)", k, tf.Text, tf.Encoding.Name)
 }
 
 // UpdateTag for TextFrame.
@@ -53,7 +56,7 @@ type UserDefinedTextFrame id3v2.UserDefinedTextFrame
 
 // Log for UserDefinedTextFrame.
 func (tf UserDefinedTextFrame) Log(k string) {
-	glog.Infof("%s: %s: %s (encoding: %d)", k, tf.Description, tf.Value, tf.Encoding.Key)
+	glog.Infof("%s: %s: %s (%s)", k, tf.Description, tf.Value, tf.Encoding.Name)
 }
 
 // UpdateTag for UserDefinedTextFrame.
@@ -337,12 +340,18 @@ func main() {
 		glog.Infof("forbidden: \"%s\"", word)
 	}
 
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(len(files))
+
 	// Our actual job, cleaning ID3 tags of all the given `files`.
 	for _, file := range files {
-		if err := process(forbiddenWords, file, *dryRun); err != nil {
-			glog.Fatal(err)
-		}
+		go func(file string) {
+			if err := process(forbiddenWords, file, *dryRun); err != nil {
+				glog.Error(err)
+			}
+			waitGroup.Done()
+		}(file)
 	}
-
+	waitGroup.Wait()
 	glog.Flush()
 }
