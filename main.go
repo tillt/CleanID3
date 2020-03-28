@@ -146,6 +146,10 @@ func (uslf UnsynchronisedLyricsFrame) FrameText() string {
 	return uslf.Lyrics
 }
 
+//
+//
+//
+
 // Clean input string.
 //
 // Removes additions if tainted by useless information.
@@ -273,9 +277,20 @@ func usage() {
 	os.Exit(2)
 }
 
+var (
+	buildVersion string = "undefined"
+	buildTime    string = "?"
+)
+
 func main() {
 	// Flags ininitializing.
 	flag.Usage = usage
+
+	showVersion :=
+		flag.Bool(
+			"version",
+			false,
+			"shows version information")
 
 	verbose :=
 		flag.Bool(
@@ -297,6 +312,11 @@ func main() {
 
 	// Arguments parsing.
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("%s (%s)\n", buildVersion, buildTime)
+		os.Exit(1)
+	}
 
 	if *verbose {
 		flag.Lookup("logtostderr").Value.Set("true")
