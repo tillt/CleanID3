@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"sync"
@@ -154,18 +155,28 @@ func (uslf UnsynchronisedLyricsFrame) FrameText() string {
 //
 // Removes additions if tainted by useless information.
 func cleanedString(forbiddenWords []string, value string) (bool, string) {
+	// Left most dirty word location.
+	smallestIndex := math.MaxInt32
+
 	for _, dirt := range forbiddenWords {
 		index := strings.Index(value, dirt)
+
 		if index != -1 {
-			// Those dirty tag additions commonly are trailing
-			// useful data, assume we only need to remove the
-			// dirt from the tail.
-			runes := []rune(value)
-			return true, strings.TrimSpace(string(runes[:index]))
+			if index < smallestIndex {
+				smallestIndex = index
+			}
 		}
 	}
 
-	return false, value
+	if smallestIndex == math.MaxInt32 {
+		return false, value
+	}
+
+	// Those dirty tag additions commonly are trailing
+	// useful data, assume we only need to remove the
+	// dirt from the tail.
+	runes := []rune(value)
+	return true, strings.TrimSpace(string(runes[:smallestIndex]))
 }
 
 // Process file.
