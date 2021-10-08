@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"strings"
@@ -13,7 +14,7 @@ import (
 	"github.com/golang/glog"
 )
 
-// Frame interface unifiying the basic functions we need accross frame
+// Frame interface unifying the basic functions we need accross frame
 // types.
 type Frame interface {
 	// Log tag name and all important details for this frame.
@@ -179,12 +180,126 @@ func cleanedString(forbiddenWords []string, value string) (bool, string) {
 	return true, strings.TrimSpace(string(runes[:smallestIndex]))
 }
 
+func checkForID3V1(file string) (int, error) {
+	glog.Info("Checking for ID3V1 tag")
+
+	f, err := os.Open(file)
+	if err != nil {
+		return 0, err
+	}
+
+	buf := make([]byte, 3)
+
+	n, err := f.Read(buf)
+	if err != nil || n < len(buf) {
+		return 0, err
+	}
+
+	if buf[0] == 'T' && buf[1] == 'A' && buf[2] == 'G' {
+		glog.Info("ID3V1 tag found at head")
+		return 1, nil
+	}
+
+	_, err = f.Seek(-128, 2)
+	if err != nil {
+		return 0, err
+	}
+
+	n, err = f.Read(buf)
+	if err != nil || n < len(buf) {
+		return 0, err
+	}
+
+	if buf[0] == 'T' && buf[1] == 'A' && buf[2] == 'G' {
+		glog.Info("ID3V1 tag found at tail")
+		return 2, nil
+	}
+
+	return 0, nil
+}
+
+func removeID3V1(file string, whence int) error {
+	glog.Infof("Removing ID3V1 from %s\n", file)
+
+	originalFile, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+
+	originalStat, err := originalFile.Stat()
+	if err != nil {
+		return err
+	}
+
+	name := file + "-id3v1"
+	newFile, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE, originalStat.Mode())
+	if err != nil {
+		return err
+	}
+	defer func() {
+		os.Remove(newFile.Name())
+	}()
+
+	buf := make([]byte, 128*1024)
+
+	if whence == 1 {
+		_, err = originalFile.Seek(128, 0)
+		if err != nil {
+			return err
+		}
+	}
+
+	for {
+		readBytes, err := originalFile.Read(buf)
+		if err != nil && err != io.EOF {
+			return err
+		}
+
+		if readBytes > 0 && whence == 2 {
+			offset, err := originalFile.Seek(0, 1)
+			if err != nil {
+				return err
+			}
+			if offset > originalStat.Size()-128 {
+				if readBytes < 128 {
+					break
+				}
+				readBytes -= 128
+			}
+		}
+
+		if readBytes == 0 {
+			break
+		}
+
+		_, err = newFile.Write(buf[:readBytes])
+		if err != nil {
+			return err
+		}
+	}
+
+	os.Remove(originalFile.Name())
+
+	err = os.Rename(newFile.Name(), originalFile.Name())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Process file.
 //
-// Parses the ID3 tags from the given file, removes occurances of
+// Parses the ID3 tags from the given file, removes occurrences of
 // forbidden words in any text frame, update the file if needed.
 func process(words []string, file string, dryRun bool) error {
 	glog.Infof("Processing %s\n", file)
+
+	removeID3V1From := 0
+	foundID3V1At, err := checkForID3V1(file)
+	if err != nil {
+		return err
+	}
 
 	// Open file and parse tag in it.
 	tag, err := id3v2.Open(file, id3v2.Options{Parse: true})
@@ -196,6 +311,7 @@ func process(words []string, file string, dryRun bool) error {
 	isFileDirty := false
 
 	for k, s := range tag.AllFrames() {
+		removeID3V1From = foundID3V1At
 		// Any cleanable frame.
 		if k[0] == 'T' || k == "COMM" || k == "USLT" {
 			for _, f := range s {
@@ -257,6 +373,18 @@ func process(words []string, file string, dryRun bool) error {
 		}
 	} else {
 		glog.Info("File was clean already")
+	}
+
+	if removeID3V1From != 0 {
+		if !dryRun {
+			glog.Info("Removing ID3V1")
+			err = removeID3V1(file, removeID3V1From)
+			if err != nil {
+				return err
+			}
+		} else {
+			glog.Info("Skipping ID3V1 removal for dry run")
+		}
 	}
 
 	return nil
