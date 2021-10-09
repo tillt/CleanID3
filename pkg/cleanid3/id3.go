@@ -9,6 +9,7 @@ import (
 
 	"github.com/bogem/id3v2"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 )
 
 // Frame interface unifying the basic functions we need accross frame
@@ -182,14 +183,14 @@ func checkForID3V1(file string) (int, error) {
 
 	f, err := os.Open(file)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrapf(err, "failed to open file '%s'", file)
 	}
 
 	buf := make([]byte, 3)
 
 	n, err := f.Read(buf)
 	if err != nil || n < len(buf) {
-		return 0, err
+		return 0, errors.Wrap(err, "failed to read possible TAG at head")
 	}
 
 	if buf[0] == 'T' && buf[1] == 'A' && buf[2] == 'G' {
@@ -199,12 +200,12 @@ func checkForID3V1(file string) (int, error) {
 
 	_, err = f.Seek(-128, 2)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "failed to seek to possible TAG at tail")
 	}
 
 	n, err = f.Read(buf)
 	if err != nil || n < len(buf) {
-		return 0, err
+		return 0, errors.Wrap(err, "failed to read possible TAG at tail")
 	}
 
 	if buf[0] == 'T' && buf[1] == 'A' && buf[2] == 'G' {
@@ -220,18 +221,18 @@ func removeID3V1(file string, whence int) error {
 
 	originalFile, err := os.Open(file)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to open file '%s'", file)
 	}
 
 	originalStat, err := originalFile.Stat()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to get file info")
 	}
 
 	name := file + "-id3v1"
 	newFile, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE, originalStat.Mode())
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to create destination file '%s'", name)
 	}
 	defer func() {
 		os.Remove(newFile.Name())
@@ -242,20 +243,20 @@ func removeID3V1(file string, whence int) error {
 	if whence == 1 {
 		_, err = originalFile.Seek(128, 0)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to skip ID3V1 header at head")
 		}
 	}
 
 	for {
 		readBytes, err := originalFile.Read(buf)
 		if err != nil && err != io.EOF {
-			return err
+			return errors.Wrap(err, "failed to read source data")
 		}
 
 		if readBytes > 0 && whence == 2 {
 			offset, err := originalFile.Seek(0, 1)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "failed to get source file position")
 			}
 			if offset > originalStat.Size()-128 {
 				if readBytes < 128 {
@@ -271,7 +272,7 @@ func removeID3V1(file string, whence int) error {
 
 		_, err = newFile.Write(buf[:readBytes])
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to write data to destination")
 		}
 	}
 
@@ -279,7 +280,7 @@ func removeID3V1(file string, whence int) error {
 
 	err = os.Rename(newFile.Name(), originalFile.Name())
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to rename temporary file")
 	}
 
 	return nil
@@ -295,7 +296,7 @@ func Clean(words []string, file string, dryRun bool) error {
 	// Open file and parse tag in it.
 	tag, err := id3v2.Open(file, id3v2.Options{Parse: true})
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "ID3V2 parsing failed for '%s'", file)
 	}
 	defer tag.Close()
 
@@ -356,7 +357,7 @@ func Clean(words []string, file string, dryRun bool) error {
 		if !dryRun {
 			glog.Info("Saving cleaned file")
 			if err = tag.Save(); err != nil {
-				return err
+				return errors.Wrap(err, "failed to save ID3V2 tags")
 			}
 		} else {
 			glog.Info("Skipping save for dry run")
@@ -367,7 +368,7 @@ func Clean(words []string, file string, dryRun bool) error {
 
 	foundID3V1At, err := checkForID3V1(file)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to check for ID3V1")
 	}
 
 	if foundID3V1At != 0 {
@@ -375,7 +376,7 @@ func Clean(words []string, file string, dryRun bool) error {
 			glog.Info("Removing ID3V1")
 			err = removeID3V1(file, foundID3V1At)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "failed to remove ID3V1")
 			}
 		} else {
 			glog.Info("Skipping ID3V1 removal for dry run")

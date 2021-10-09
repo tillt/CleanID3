@@ -8,7 +8,8 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	"tillt.com/cleanid3/pkg/cleanid3"
+	"github.com/pkg/errors"
+	"github.com/tillt/cleanid3/pkg/cleanid3"
 )
 
 // Initialize text list.
@@ -18,7 +19,7 @@ func readLines(path string) ([]string, error) {
 
 	file, err := os.Open(path)
 	if err != nil {
-		return lines, err
+		return lines, errors.Wrapf(err, "failed to open '%s'", path)
 	}
 	defer file.Close()
 
