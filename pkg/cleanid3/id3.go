@@ -186,6 +186,16 @@ func checkForID3V1(file string) (int, error) {
 		return 0, errors.Wrapf(err, "failed to open file '%s'", file)
 	}
 
+	stat, err := f.Stat()
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to get file info")
+	}
+
+	// Exit early when the file is too small for a complete ID3V1.
+	if stat.Size() < 128 {
+		return 0, nil
+	}
+
 	buf := make([]byte, 3)
 
 	n, err := f.Read(buf)
