@@ -12,7 +12,7 @@ install: build
 	@go install ${LDFLAGS}
 
 build:
-	go build -i -v -o ${OUT} ${LDFLAGS}
+	go build -v -o ${OUT} ${LDFLAGS}
 
 clean:
 	-@rm ${OUT} ${OUT}-v*
