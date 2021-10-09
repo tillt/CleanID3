@@ -296,10 +296,10 @@ func removeID3V1(file string, whence int) error {
 	return nil
 }
 
-// Process file.
-//
-// Parses the ID3 tags from the given file, removes occurrences of
-// forbidden words in any text frame, update the file if needed.
+// Clean parses the ID3V2 tags from the given file, removes occurrences of
+// forbidden words in any text frame, update the file if needed. Additionally
+// we check for existing ID3V1 tags and simply remove them altogether - it is
+// 2021.
 func Clean(words []string, file string, dryRun bool) error {
 	glog.Infof("Processing %s\n", file)
 
@@ -383,7 +383,7 @@ func Clean(words []string, file string, dryRun bool) error {
 
 	if foundID3V1At != 0 {
 		if !dryRun {
-			glog.Info("Removing ID3V1")
+			fmt.Println("Removing ID3V1")
 			err = removeID3V1(file, foundID3V1At)
 			if err != nil {
 				return errors.Wrap(err, "failed to remove ID3V1")
