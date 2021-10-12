@@ -353,7 +353,8 @@ func Clean(words []string, file string, dryRun bool) error {
 
 	isFileDirty := false
 
-	for k, s := range tag.AllFrames() {
+	frames := tag.AllFrames()
+	for k, s := range frames {
 		// Any cleanable frame.
 		if k[0] == 'T' || k == "COMM" || k == "USLT" {
 			for _, f := range s {
