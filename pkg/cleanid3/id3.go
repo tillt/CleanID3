@@ -21,6 +21,8 @@ type Frame interface {
 	UpdateTag(*id3v2.Tag, string, string)
 	// Get displayed text we may need to clean.
 	FrameText() string
+	// Remove the frame from that tag.
+	Delete(*id3v2.Tag, string)
 }
 
 //
@@ -47,6 +49,10 @@ func (tf TextFrame) FrameText() string {
 	return tf.Text
 }
 
+func (tf TextFrame) Delete(tag *id3v2.Tag, k string) {
+	tag.DeleteFrames(k)
+}
+
 //
 // UserDefinedTextFrame.
 //
@@ -61,17 +67,44 @@ func (tf UserDefinedTextFrame) Log(k string) {
 
 // UpdateTag for UserDefinedTextFrame.
 func (tf UserDefinedTextFrame) UpdateTag(tag *id3v2.Tag, k string, value string) {
-	udtf := id3v2.UserDefinedTextFrame{
-		Encoding:    tf.Encoding,
-		Description: tf.Description,
-		Value:       value,
+	// These frames are not unique by key but additionally "subkeyed"
+	// by their description. To update such frame, we need to remove all
+	// of them and add them again as updated.
+	frames := tag.GetFrames(k)
+	tag.DeleteFrames(k)
+	for _, f := range frames {
+		udtf, _ := f.(id3v2.UserDefinedTextFrame)
+		if tf.Description != udtf.Description {
+			tag.AddUserDefinedTextFrame(udtf)
+		} else {
+			udtf = id3v2.UserDefinedTextFrame{
+				Encoding:    tf.Encoding,
+				Description: tf.Description,
+				Value:       value,
+			}
+			tag.AddUserDefinedTextFrame(udtf)
+		}
 	}
-	tag.AddUserDefinedTextFrame(udtf)
 }
 
 // FrameText for UserDefinedTextFrame.
 func (tf UserDefinedTextFrame) FrameText() string {
 	return tf.Value
+}
+
+// Delete for UserDefinedTextFrame.
+func (tf UserDefinedTextFrame) Delete(tag *id3v2.Tag, k string) {
+	// These frames are not unique by key but additionally "subkeyed"
+	// by their description. To remove such frame, we need to remove all
+	// of them and add all but the one to delete again.
+	frames := tag.GetFrames(k)
+	tag.DeleteFrames(k)
+	for _, f := range frames {
+		udtf, _ := f.(id3v2.UserDefinedTextFrame)
+		if tf.Description != udtf.Description {
+			tag.AddUserDefinedTextFrame(udtf)
+		}
+	}
 }
 
 //
@@ -110,6 +143,10 @@ func (cf CommentFrame) FrameText() string {
 	return cf.Text
 }
 
+func (cf CommentFrame) Delete(tag *id3v2.Tag, k string) {
+	tag.DeleteFrames(k)
+}
+
 //
 // UnsynchronisedLyricsFrame.
 //
@@ -144,6 +181,10 @@ func (uslf UnsynchronisedLyricsFrame) UpdateTag(tag *id3v2.Tag, k string, value 
 // FrameText for UnsynchronisedLyricsFrame.
 func (uslf UnsynchronisedLyricsFrame) FrameText() string {
 	return uslf.Lyrics
+}
+
+func (uslf UnsynchronisedLyricsFrame) Delete(tag *id3v2.Tag, k string) {
+	tag.DeleteFrames(k)
 }
 
 //
@@ -346,7 +387,7 @@ func Clean(words []string, file string, dryRun bool) error {
 						frame.UpdateTag(tag, k, value)
 					} else {
 						fmt.Printf("Removing frame %s\n", k)
-						tag.DeleteFrames(k)
+						frame.Delete(tag, k)
 					}
 					isFileDirty = true
 				}
