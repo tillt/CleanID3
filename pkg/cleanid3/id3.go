@@ -401,7 +401,9 @@ func Clean(words []string, file string, dryRun bool) error {
 			isFileDirty = true
 		} else {
 			// Any other frame id.
-			glog.Infof("%s: ????", k)
+			for _ = range s {
+				glog.Infof("%s: ????", k)
+			}
 		}
 	}
 
