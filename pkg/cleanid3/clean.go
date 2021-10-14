@@ -102,7 +102,7 @@ func Clean(words []string, file string, dryRun bool) error {
 			isFileDirty = true
 		} else {
 			// Any other frame id.
-			for _ = range s {
+			for range s {
 				glog.Infof("%s: ????", k)
 			}
 		}

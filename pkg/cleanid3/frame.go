@@ -44,6 +44,7 @@ func (tf TextFrame) FrameText() string {
 	return tf.Text
 }
 
+// Delete for TextFrame.
 func (tf TextFrame) Delete(tag *id3v2.Tag, k string) {
 	tag.DeleteFrames(k)
 }
@@ -139,6 +140,7 @@ func (cf CommentFrame) FrameText() string {
 	return cf.Text
 }
 
+// Delete for CommentFrame.
 func (cf CommentFrame) Delete(tag *id3v2.Tag, k string) {
 	tag.DeleteFrames(k)
 }
@@ -179,6 +181,7 @@ func (uslf UnsynchronisedLyricsFrame) FrameText() string {
 	return uslf.Lyrics
 }
 
+// Delete for UnsynchronisedLyricsFrame.
 func (uslf UnsynchronisedLyricsFrame) Delete(tag *id3v2.Tag, k string) {
 	tag.DeleteFrames(k)
 }

@@ -131,7 +131,7 @@ func main() {
 				glog.Error(err)
 			}
 			if !*dryRun {
-				if err := cleanid3.RemoveID3V1(file, cleanid3.ID3V1_TAG_AT_UNKNOWN); err != nil {
+				if err := cleanid3.RemoveID3V1(file, cleanid3.ID3V1TagAtUnknown); err != nil {
 					glog.Error(err)
 				}
 			}
