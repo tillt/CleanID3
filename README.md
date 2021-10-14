@@ -62,3 +62,49 @@ I0119 23:38:27.074133   59976 main.go:131] Saving cleaned file
 ```
 
 The file gets updated with a removed ID3 comment.
+
+
+## Application Example: iTunes Match Library Import
+
+The following script makes use of cleanid3 for ensureing files added to the Music app are stripped of garbage tags. When files exceed the iTunes Match filesize limit of 200mb, we split the source into chunks of 60minutes and add those.
+
+```bash
+#!/bin/bash
+set -e -x
+
+cleanid3_bin="/Users/till/go/bin/cleanid3"
+mp3splt_bin="/usr/local/bin/mp3splt"
+max_filesize="200000000"
+split_duration="60.0"
+
+function add() {
+  title=$(basename "$1")
+  message=$($cleanid3_bin "$1" 2>&1)
+  osascript<<EOSA_ADD
+set foo to posix file "$1" as alias
+display notification "$message" with title "Music Add" subtitle "♫ $title"
+tell application "Music" to add foo
+EOSA_ADD
+}
+
+for f in "$@"; do
+  $(chmod 0644 "$f")
+  size=$(stat -f%z "$f")
+  if [ "$size" -gt "$max_filesize" ]; then
+    workdir=$(mktemp -d)
+    $mp3splt_bin -d "$workdir" -f -t "$split_duration" -a "$f"
+    for ff in $workdir/*.mp3; do
+     add "$ff"
+    done
+    rm -rf "$workdir"
+  else
+    add "$f"
+  fi
+done
+```
+
+For splitting MP3s, we use `mp3splt` - get it via homebrew;
+
+```bash
+brew install mp3splt
+```
