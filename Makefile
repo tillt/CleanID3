@@ -13,9 +13,9 @@ CWD := $(shell pwd)
 all: build
 
 install: build
-	go install $(LDFLAGS)
 	mkdir -p $(DESTINATION)/share/$(OUT)
-	ln -s $(CWD)/forbidden.txt $(DESTINATION)/share/$(OUT)/forbidden.txt
+	ln -sfn $(CWD)/forbidden.txt $(DESTINATION)/share/$(OUT)/forbidden.txt
+	go install $(LDFLAGS)
 
 build:
 	go build -v -o ${OUT} ${LDFLAGS}
