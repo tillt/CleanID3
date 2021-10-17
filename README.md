@@ -1,6 +1,6 @@
 # CleanID3
 
-Parses ID3V2 tags from the supplied file, removes occurrences of forbidden words from text frames, removes URL frames, updates the file if needed.
+Parses ID3V2 tags from the supplied file, removes occurrences of forbidden words from text frames, removes URL frames, updates the file if needed. If existing metadata does not cover basics like for example "Title" or "Artist", that data gets gathered from filename and -path and stored as ID3V2 tags.
 
 ## Background
 
