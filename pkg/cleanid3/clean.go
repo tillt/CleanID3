@@ -115,7 +115,7 @@ func Clean(words []string, file string, dryRun bool) error {
 				return errors.Wrap(err, "failed to save ID3V2 tags")
 			}
 		} else {
-			glog.Info("Skipping save for dry run")
+			glog.Info("Skipping clean save for dry run")
 		}
 	} else {
 		glog.Info("File was clean already")

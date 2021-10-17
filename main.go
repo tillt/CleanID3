@@ -127,14 +127,26 @@ func main() {
 	// Our actual job, cleaning ID3 tags of all the given `files`.
 	for _, file := range files {
 		go func(file string) {
-			if err := cleanid3.Clean(forbiddenWords, file, *dryRun); err != nil {
-				glog.Error(err)
-			}
+			// Remove ID3V1 if existing.
+			// TODO(tillt): Consider parsing it before destruction.
 			if !*dryRun {
-				if err := cleanid3.RemoveID3V1(file, cleanid3.ID3V1TagAtUnknown); err != nil {
+				err := cleanid3.RemoveID3V1(file, cleanid3.ID3V1TagAtUnknown)
+				if err != nil {
 					glog.Error(err)
 				}
 			}
+
+			err = cleanid3.Enhance(file, *dryRun)
+			if err != nil {
+				glog.Error(err)
+			}
+
+			// Clean ID3 from forbidden words.
+			err = cleanid3.Clean(forbiddenWords, file, *dryRun)
+			if err != nil {
+				glog.Error(err)
+			}
+
 			waitGroup.Done()
 		}(file)
 	}
