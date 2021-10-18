@@ -59,6 +59,18 @@ func main() {
 			false,
 			"shows debug info in stderr")
 
+	clean :=
+		flag.Bool(
+			"clean",
+			true,
+			"clean file from unwanted garbage")
+
+	enhance :=
+		flag.Bool(
+			"enhance",
+			true,
+			"enhance file with meta from path")
+
 	dryRun :=
 		flag.Bool(
 			"dry",
@@ -136,15 +148,18 @@ func main() {
 				}
 			}
 
-			err = cleanid3.Enhance(file, *dryRun)
-			if err != nil {
-				glog.Error(err)
+			if *enhance {
+				err = cleanid3.Enhance(file, *dryRun)
+				if err != nil {
+					glog.Error(err)
+				}
 			}
 
-			// Clean ID3 from forbidden words.
-			err = cleanid3.Clean(forbiddenWords, file, *dryRun)
-			if err != nil {
-				glog.Error(err)
+			if *clean {
+				err = cleanid3.Clean(forbiddenWords, file, *dryRun)
+				if err != nil {
+					glog.Error(err)
+				}
 			}
 
 			waitGroup.Done()

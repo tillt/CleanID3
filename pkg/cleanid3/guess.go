@@ -131,38 +131,72 @@ func guess(path string) (*Meta, error) {
 	// Get a complete title candidate.
 	title := strings.TrimSpace(file)
 
-	// Try to extract a track index.
-	r, err := regexp.Compile("([0-9])*[-,.: ]?(.*)")
+	meta := new(Meta)
+
+	// Try to extract "artist - title".
+	f := strings.Split(title, "-")
+	if len(f) >= 2 {
+		meta.artist = strings.TrimSpace(f[0])
+		meta.title = strings.TrimSpace(strings.Join(f[1:], "-"))
+	} else {
+		meta.title = strings.TrimSpace(f[0])
+	}
+
+	// Try to extract an index and maybe a count.
+	r, err := regexp.Compile("([0-9])*:?([0-9]*)?[-,.: ]?(.*)")
 	if err != nil {
 		return nil, err
 	}
 
-	meta := new(Meta)
-
-	matches := r.FindAllStringSubmatch(title, -1)
+	matches := r.FindAllStringSubmatch(meta.title, -1)
 	if len(matches) > 0 {
 		if len(matches[0]) > 2 {
-			meta.track, err = strconv.Atoi(matches[0][1])
-			if err != nil {
-				meta.track = 0
+			if len(matches[0][1]) > 0 {
+				meta.track, err = strconv.Atoi(matches[0][1])
+				if err != nil {
+					meta.track = 0
+				}
+			}
+			if len(matches[0][2]) > 0 {
+				meta.tracks, err = strconv.Atoi(matches[0][2])
+				if err != nil {
+					meta.tracks = 0
+				}
 			}
 			// Use what was not track index to continue parsing.
-			title = strings.TrimSpace(matches[0][2])
+			meta.title = strings.TrimSpace(matches[0][3])
 		}
 	}
 
-	// Try to find extract "artist - title".
-	f := strings.Split(title, "-")
-	if len(f) < 2 {
-		meta.title = strings.TrimSpace(f[0])
-	} else {
-		meta.artist = strings.TrimSpace(f[0])
-		meta.title = strings.TrimSpace(strings.Join(f[1:], "-"))
-	}
+	meta.title = strings.Trim(meta.title, ":;,.- ")
+	meta.artist = strings.Trim(meta.artist, ":;,.- ")
 
+	// Try to extract album from parent folder name.
 	if len(parts) > 1 {
 		meta.album = parts[len(parts)-2]
 	}
+
+	matches = r.FindAllStringSubmatch(meta.album, -1)
+	if len(matches) > 0 {
+		if len(matches[0]) > 2 {
+			if len(matches[0][1]) > 0 {
+				meta.disc, err = strconv.Atoi(matches[0][1])
+				if err != nil {
+					meta.disc = 0
+				}
+			}
+			if len(matches[0][2]) > 0 {
+				meta.discs, err = strconv.Atoi(matches[0][2])
+				if err != nil {
+					meta.discs = 0
+				}
+			}
+			// Use what was not track index to continue parsing.
+			meta.album = strings.TrimSpace(matches[0][3])
+		}
+	}
+
+	meta.album = strings.Trim(meta.album, ":;,.- ")
 
 	glog.Infof("Guessed from path '%s' and found %+v'\n", path, meta)
 
@@ -200,16 +234,33 @@ func Enhance(file string, dry bool) error {
 		fmt.Printf("Adding title %s\n", meta.title)
 		tag.AddTextFrame("TIT2", id3v2.EncodingUTF16, meta.title)
 	}
+
 	if len(id3.artist) == 0 && len(meta.artist) > 0 {
 		isFileDirty = true
 		fmt.Printf("Adding artist %s\n", meta.artist)
 		tag.AddTextFrame("TPE1", id3v2.EncodingUTF16, meta.artist)
 	}
+
 	if id3.track == 0 && meta.track > 0 {
 		isFileDirty = true
-		fmt.Printf("Adding track %d\n", meta.track)
-		tag.AddTextFrame("TRCK", id3v2.EncodingISO, fmt.Sprintf("%d", meta.track))
+		tracks := id3.tracks
+		if tracks == 0 && meta.tracks > 0 {
+			tracks = meta.tracks
+		}
+		fmt.Printf("Adding track %d/%d\n", meta.track, tracks)
+		tag.AddTextFrame("TRCK", id3v2.EncodingISO, fmt.Sprintf("%d/%d", meta.track, tracks))
 	}
+
+	if id3.disc == 0 && meta.disc > 0 {
+		isFileDirty = true
+		discs := id3.discs
+		if discs == 0 && meta.discs > 0 {
+			discs = meta.discs
+		}
+		fmt.Printf("Adding disc %d/%d\n", meta.disc, discs)
+		tag.AddTextFrame("TPOS", id3v2.EncodingISO, fmt.Sprintf("%d/%d", meta.disc, discs))
+	}
+
 	if len(id3.album) == 0 && len(meta.album) > 0 {
 		isFileDirty = true
 		fmt.Printf("Adding album %s\n", meta.album)
