@@ -185,3 +185,47 @@ func (uslf UnsynchronisedLyricsFrame) FrameText() string {
 func (uslf UnsynchronisedLyricsFrame) Delete(tag *id3v2.Tag, k string) {
 	tag.DeleteFrames(k)
 }
+
+//
+// PictureFrame.
+//
+
+// PictureFrame pulls in the id3v2-package type to make it extendable.
+type PictureFrame id3v2.PictureFrame
+
+// Log for PictureFrame.
+func (pf PictureFrame) Log(k string) {
+	glog.Infof("%s: %d: %s: \"%s\" (%s)", k, pf.PictureType, pf.MimeType, pf.Description, pf.Encoding.Name)
+}
+
+// UpdateTag for PictureFrame.
+func (pf PictureFrame) UpdateTag(tag *id3v2.Tag, k string, value string) {
+	newpf := id3v2.PictureFrame{
+		Encoding:    pf.Encoding,
+		Description: value,
+		Picture:     pf.Picture,
+		PictureType: pf.PictureType,
+		MimeType:    pf.MimeType,
+	}
+	tag.AddAttachedPicture(newpf)
+}
+
+// FrameText for PictureFrame.
+func (pf PictureFrame) FrameText() string {
+	return pf.Description
+}
+
+// Delete for PictureFrame.
+func (pf PictureFrame) Delete(tag *id3v2.Tag, k string) {
+	// These frames are not unique by key but additionally "subkeyed".
+	// To remove such frame, we need to remove all of them and add all
+	// but the one to delete again.
+	frames := tag.GetFrames(k)
+	tag.DeleteFrames(k)
+	for _, f := range frames {
+		pf, _ := f.(id3v2.PictureFrame)
+		if id3v2.PictureFrame(pf).UniqueIdentifier() != pf.UniqueIdentifier() {
+			tag.AddAttachedPicture(pf)
+		}
+	}
+}

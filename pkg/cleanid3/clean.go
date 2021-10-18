@@ -1,6 +1,8 @@
 package cleanid3
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"strings"
@@ -42,7 +44,7 @@ func cleanedString(forbiddenWords []string, value string) (bool, string) {
 // forbidden words in any text frame, update the file if needed. Additionally
 // we check for existing ID3V1 tags and simply remove them altogether - it is
 // 2021.
-func Clean(words []string, file string, dryRun bool) error {
+func Clean(words []string, bins []string, file string, dryRun bool) error {
 	glog.Infof("Processing %s\n", file)
 
 	// Open file and parse tag in it.
@@ -100,6 +102,25 @@ func Clean(words []string, file string, dryRun bool) error {
 			fmt.Printf("Removing frame %s\n", k)
 			tag.DeleteFrames(k)
 			isFileDirty = true
+		} else if k == "APIC" {
+			// APIC.
+			for _, f := range s {
+				pf, _ := f.(id3v2.PictureFrame)
+				sha := sha1.Sum(pf.Picture)
+				encoded := hex.EncodeToString(sha[:])
+
+				glog.Infof("%s: type:%d mime:%s SHA:%s", k, pf.PictureType, pf.MimeType, encoded)
+
+				frame := PictureFrame(pf)
+				for _, v := range bins {
+					if strings.EqualFold(v, encoded) {
+						glog.Info("Matching image %s found", v)
+						fmt.Printf("Removing frame %s\n", k)
+						frame.Delete(tag, k)
+						isFileDirty = true
+					}
+				}
+			}
 		} else {
 			// Any other frame id.
 			for range s {

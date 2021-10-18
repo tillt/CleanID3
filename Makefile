@@ -14,7 +14,8 @@ all: build
 
 install: build
 	mkdir -p $(DESTINATION)/share/$(OUT)
-	ln -sfn $(CWD)/forbidden.txt $(DESTINATION)/share/$(OUT)/forbidden.txt
+	ln -sfn $(CWD)/forbidden-words.txt $(DESTINATION)/share/$(OUT)/forbidden-words.txt
+	ln -sfn $(CWD)/forbidden-bins.txt $(DESTINATION)/share/$(OUT)/forbidden-bins.txt
 	go install $(LDFLAGS)
 
 build:
@@ -26,7 +27,8 @@ clean:
 
 archive: build
 	mkdir -p ${PACKAGE_ROOT}/share/${OUT}
-	cp forbidden.txt ${PACKAGE_ROOT}/share/${OUT}
+	cp forbidden-words.txt ${PACKAGE_ROOT}/share/${OUT}
+	cp forbidden-bins.txt ${PACKAGE_ROOT}/share/${OUT}
 	mkdir -p ${PACKAGE_ROOT}/bin
 	cp ${OUT} ${PACKAGE_ROOT}/bin
 ifeq ($(OS),Darwin)

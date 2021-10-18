@@ -8,11 +8,11 @@ Consider your MP3 collection was having a colorful past and you want to make sur
 
 ## Configuration
 
-Just add those nasty traces you want removed to the list in `forbidden.txt`. The list comes pre-configured with some usual suspects.
+Just add those textual traces you want removed to the list in `forbidden-words.txt`. The list comes pre-configured with some usual suspects.
 
-### `forbidden.txt`
+### `forbidden-words.txt`
 
-`forbidden.txt` contains a list of terms that are to be cleaned out.
+`forbidden-words.txt` contains a list of terms that are to be cleaned out.
 
 For removing all URLs that from any ID3 tag, use something like this;
 
@@ -30,6 +30,10 @@ This tag done with
 converted by
 ```
 
+### `forbidden-bins.txt`
+
+`forbidden-bins.txt` contains a list of SHAs matching binary data (pictures) that are to be cleaned out.
+
 ## Build
 
 ```bash
@@ -38,10 +42,10 @@ go build
 
 ## Run
 
-Running CleanID3 to process `file.mp3` while enabling verbose debug logging and using a forbidden words list from the current work directory `./forbidden.txt`;
+Running CleanID3 to process `file.mp3` while enabling verbose debug logging and using a forbidden words list from the current work directory `./forbidden-words.txt`;
 
 ```bash
-./cleanid3 -verbose -forbidden=./forbidden.txt file.mp3
+./cleanid3 -verbose -forbidden-words=./forbidden-words.txt file.mp3
 ```
 
 Running CleanID3 to process any file supplied via `stdin`;
@@ -50,7 +54,7 @@ Running CleanID3 to process any file supplied via `stdin`;
 ./cleanid3
 ```
 
-Verbose example output from a ID3-tagged file that contains a comment with a URL starting with "http://" which is part of the default `forbidden.txt`;
+Verbose example output from a ID3-tagged file that contains a comment with a URL starting with "http://" which is part of the default `forbidden-words.txt`;
 
 ```
 I0119 23:38:27.066641   59976 main.go:37] Processing test.mp3

@@ -79,9 +79,15 @@ func main() {
 
 	forbiddenWordsPath :=
 		flag.String(
-			"forbidden",
-			"/usr/local/share/cleanid3/forbidden.txt",
+			"forbidden-words",
+			"/usr/local/share/cleanid3/forbidden-words.txt",
 			"forbidden words list path")
+
+	forbiddenBinariesPath :=
+		flag.String(
+			"forbidden-bins",
+			"/usr/local/share/cleanid3/forbidden-bins.txt",
+			"forbidden binaries list path")
 
 	// Arguments parsing.
 	flag.Parse()
@@ -127,10 +133,19 @@ func main() {
 	// Forbidden words list initializing.
 	forbiddenWords, err := readLines(*forbiddenWordsPath)
 	if err != nil {
-		glog.Fatal("Error initializing blacklist: ", err)
+		glog.Fatal("Error initializing text blacklist: ", err)
 	}
 	for _, word := range forbiddenWords {
-		glog.Infof("forbidden: \"%s\"", word)
+		glog.Infof("forbidden-word: \"%s\"", word)
+	}
+
+	// Forbidden words list initializing.
+	forbiddenBinaries, err := readLines(*forbiddenBinariesPath)
+	if err != nil {
+		glog.Fatal("Error initializing binary blacklist: ", err)
+	}
+	for _, sha := range forbiddenBinaries {
+		glog.Infof("forbidden-bin: \"%s\"", sha)
 	}
 
 	var waitGroup sync.WaitGroup
@@ -156,7 +171,7 @@ func main() {
 			}
 
 			if *clean {
-				err = cleanid3.Clean(forbiddenWords, file, *dryRun)
+				err = cleanid3.Clean(forbiddenWords, forbiddenBinaries, file, *dryRun)
 				if err != nil {
 					glog.Error(err)
 				}
