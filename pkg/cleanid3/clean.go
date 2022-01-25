@@ -114,7 +114,7 @@ func Clean(words []string, bins []string, file string, dryRun bool) error {
 				frame := PictureFrame(pf)
 				for _, v := range bins {
 					if strings.EqualFold(v, encoded) {
-						glog.Info("Matching image %s found", v)
+						glog.Infof("Matching image %s found", v)
 						fmt.Printf("Removing frame %s\n", k)
 						frame.Delete(tag, k)
 						isFileDirty = true
