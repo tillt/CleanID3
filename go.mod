@@ -9,5 +9,3 @@ require (
 )
 
 require golang.org/x/text v0.3.7 // indirect
-
-replace github.com/bogem/id3v2/v2 => /Users/till/Development/go/id3v2
