@@ -173,7 +173,13 @@ func guess(path string) (*Meta, error) {
 
 	// Try to extract album from parent folder name.
 	if len(parts) > 1 {
-		meta.album = parts[len(parts)-2]
+		tempAlbum := parts[len(parts)-2]
+		if len(tempAlbum) > 0 {
+			// Lame way of excluding anything most certainly non album name.
+			if !strings.Contains(tempAlbum, "MP3ADD") && !strings.Contains(tempAlbum, "Downloads") {
+				meta.album = tempAlbum
+			}
+		}
 	}
 
 	matches = r.FindAllStringSubmatch(meta.album, -1)
