@@ -65,6 +65,18 @@ func main() {
 			true,
 			"clean file from unwanted garbage")
 
+	coverCheck :=
+		flag.Bool(
+			"cover-check",
+			false,
+			"check if file has a cover image")
+
+	coverPath :=
+		flag.String(
+			"cover-path",
+			"",
+			"enhance file with a cover image")
+
 	enhance :=
 		flag.Bool(
 			"enhance",
@@ -153,6 +165,19 @@ func main() {
 	// Our actual job, cleaning ID3 tags of all the given `files`.
 	for _, file := range files {
 		go func(file string) {
+			if *coverCheck {
+				fmt.Println("Exclusively checking for cover image")
+				hasCover, err := cleanid3.CheckForCover(file)
+				res := 1
+				if err != nil {
+					glog.Error(err)
+				} else {
+					if !hasCover {
+						res = 0
+					}
+				}
+				os.Exit(res)
+			}
 			// Remove ID3V1 if existing.
 			// TODO(tillt): Consider parsing it before destruction.
 			if !*dryRun {
@@ -161,7 +186,6 @@ func main() {
 					glog.Error(err)
 				}
 			}
-
 			if *enhance {
 				err = cleanid3.Enhance(file, *dryRun)
 				if err != nil {
@@ -171,6 +195,13 @@ func main() {
 
 			if *clean {
 				err = cleanid3.Clean(forbiddenWords, forbiddenBinaries, file, *dryRun)
+				if err != nil {
+					glog.Error(err)
+				}
+			}
+
+			if len(*coverPath) > 0 {
+				err = cleanid3.AddCover(file, *coverPath)
 				if err != nil {
 					glog.Error(err)
 				}
