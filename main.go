@@ -130,7 +130,7 @@ func main() {
 		files = flag.Args()
 	}
 
-	// Forbidden words list initializing.
+	// Forbidden words and binaries lists initializing.
 	forbiddenWords, err := readLines(*forbiddenWordsPath)
 	if err != nil {
 		glog.Fatal("Error initializing text blacklist: ", err)
@@ -139,7 +139,6 @@ func main() {
 		glog.Infof("forbidden-word: \"%s\"", word)
 	}
 
-	// Forbidden words list initializing.
 	forbiddenBinaries, err := readLines(*forbiddenBinariesPath)
 	if err != nil {
 		glog.Fatal("Error initializing binary blacklist: ", err)
