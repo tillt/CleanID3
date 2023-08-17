@@ -176,7 +176,9 @@ func guess(path string) (*Meta, error) {
 		tempAlbum := parts[len(parts)-2]
 		if len(tempAlbum) > 0 {
 			// Lame way of excluding anything most certainly non album name.
-			if !strings.Contains(tempAlbum, "MP3ADD") && !strings.Contains(tempAlbum, "Downloads") {
+			if !strings.Contains(tempAlbum, "MP3ADD") &&
+				!strings.Contains(tempAlbum, "Downloads") &&
+				!strings.Contains(tempAlbum, "tmp.") {
 				meta.album = tempAlbum
 			}
 		}
