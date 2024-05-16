@@ -71,4 +71,5 @@ DJ-Source.c
 by hoerbuch.i
 Brothers of Usene
 _(tropicmusi
-[ AFO (C)
+.[ AFO
+Legends never di
