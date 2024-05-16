@@ -8,4 +8,7 @@ require (
 	github.com/pkg/errors v0.9.1
 )
 
-require golang.org/x/text v0.3.8 // indirect
+require (
+	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
+	golang.org/x/text v0.3.8 // indirect
+)
