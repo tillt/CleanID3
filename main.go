@@ -65,6 +65,12 @@ func main() {
 			true,
 			"clean file from unwanted garbage")
 
+	ungain :=
+		flag.Bool(
+			"ungain",
+			false,
+			"remove any gain information")
+
 	coverCheck :=
 		flag.Bool(
 			"cover-check",
@@ -195,6 +201,13 @@ func main() {
 
 			if *clean {
 				err = cleanid3.Clean(forbiddenWords, forbiddenBinaries, file, *dryRun)
+				if err != nil {
+					glog.Error(err)
+				}
+			}
+
+			if *ungain {
+				err = cleanid3.Ungain(file, *dryRun)
 				if err != nil {
 					glog.Error(err)
 				}
