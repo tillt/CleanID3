@@ -75,6 +75,15 @@ func Clean(words []string, bins []string, file string, dryRun bool) error {
 					// "TXXX".
 					tf, _ := f.(id3v2.UserDefinedTextFrame)
 					frame = UserDefinedTextFrame(tf)
+
+					// Some rascals nowadays put their shit into keys.
+					cleanedKey, _ := cleanedString(words, tf.Description)
+					if cleanedKey {
+						fmt.Printf("Removing frame TXXX:%s\n", tf.Description)
+						frame.Delete(tag, k)
+						isFileDirty = true
+						continue
+					}
 				} else {
 					// Any text frame that is not "TXXX".
 					tf, _ := f.(id3v2.TextFrame)
