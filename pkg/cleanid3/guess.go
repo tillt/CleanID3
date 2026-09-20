@@ -90,14 +90,14 @@ func read(file string) (*Meta, error) {
 			} else if k == "TPOS" {
 				meta.disc, meta.discs, err = guessEnum(frame.FrameText())
 				if err != nil {
-					glog.Errorf("failed to guess disc index and count: %w", err)
+					glog.Infof("failed to guess disc index and count: %w", err)
 					meta.disc = 0
 					meta.discs = 0
 				}
 			} else if k == "TRCK" {
 				meta.track, meta.tracks, err = guessEnum(frame.FrameText())
 				if err != nil {
-					glog.Errorf("failed to guess track index and count: %w", err)
+					glog.Infof("couldnt to guess track index and count: %w", err)
 					meta.track = 0
 					meta.tracks = 0
 				}
